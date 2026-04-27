@@ -6,7 +6,7 @@
     "js": "index.js",
     "css": "style.css",
     "author": "aceenvw",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "homePage": "https://github.com/aceeenvw/quickpersonapro",
     "auto_update": true,
     "minimum_version": "1.12.0",

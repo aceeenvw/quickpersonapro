@@ -40,6 +40,9 @@
         "Default is Ctrl/Cmd + Shift + P (avoids the browser's Print shortcut).": "По умолчанию: Ctrl/Cmd + Shift + P (чтобы не конфликтовать с «Печать» в браузере).",
         "(disabled)": "(отключено)",
         "Grid columns": "Колонок в сетке",
+        "Auto": "Авто",
+        "(= ${0} columns at ${1}px${2})": "(= ${0} колонок при ${1}px${2})",
+        ", touch": ", сенсор",
         "Menu placement": "Положение меню",
         "Reset defaults": "Сбросить настройки",
         "Reset ${0} to default settings?": "Сбросить настройки ${0}?"

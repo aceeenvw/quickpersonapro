@@ -4,7 +4,7 @@
 
 ### _Supercharged persona switcher for SillyTavern_
 
-[![Version](https://img.shields.io/badge/version-1.0.1-b48cff?style=flat-square)](./manifest.json)
+[![Version](https://img.shields.io/badge/version-1.0.2-b48cff?style=flat-square)](./manifest.json)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-7ec4ff?style=flat-square)](./LICENSE)
 [![SillyTavern](https://img.shields.io/badge/SillyTavern-1.12%2B-ffd27e?style=flat-square)](https://github.com/SillyTavern/SillyTavern)
 [![i18n](https://img.shields.io/badge/i18n-EN%20%2F%20RU-golden?style=flat-square)](./i18n.json)
@@ -137,7 +137,11 @@ All configurable under **Extensions → ⊹ QUICK PERSONA PRO ⊹**:
 - **Decorative glyphs ⊹** — turn the aesthetic on/off
 - **Mobile quick-action toolbar** — visible chat/character/default lock toggles on touch devices
 - **Global hotkey** — pick any modifier combination (Ctrl/Cmd, Shift, Alt/Option) + single letter
-- **Grid columns** — 3 to 12
+- **Grid columns** — **`Auto`** (adaptive, recommended) or a fixed number 3–12.
+  Auto picks a sensible column count for the current viewport:
+  _phone → 3, narrow → 4, tablet → 5, desktop → 6, ultrawide → 7._
+  Unchecking "Auto" reveals a number field for an explicit override that
+  persists across refreshes.
 - **Menu placement** — `top-start`, `top`, `bottom-end`, etc.
 
 Settings are stored under `extension_settings.quickPersonaPro` and sync across devices just like any other SillyTavern setting.
@@ -152,6 +156,18 @@ Settings are stored under `extension_settings.quickPersonaPro` and sync across d
 The extension auto-loads its `i18n.json` on startup and registers Russian strings via SillyTavern's `addLocaleData` API. Set your SillyTavern language to Russian to see it.
 
 Want to contribute another language? Just add a key to [`i18n.json`](./i18n.json) and open a PR.
+
+---
+
+## 🛡️ Resilience
+
+- **Broken-image fallback** — if a persona's thumbnail fails to load (deleted
+  file, orphan persona entry, server hiccup), the extension silently falls
+  back to SillyTavern's default user avatar (`/img/ai4.png`) instead of
+  showing the browser's broken-image icon.
+- **Pre-init safety** — the main button shows the default avatar during the
+  brief window between extension load and SillyTavern's persona state
+  initialization.
 
 ---
 

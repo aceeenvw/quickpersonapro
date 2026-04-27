@@ -38,7 +38,7 @@ import { SlashCommandArgument, SlashCommandNamedArgument, ARGUMENT_TYPE } from '
 const __QPP_PROV__ = (() => {
     const seed = [0x61, 0x63, 0x65, 0x65, 0x6e, 0x76, 0x77];
     const a = String.fromCharCode.apply(null, seed);
-    const v = '1.0.1';
+    const v = '1.0.2';
     // Lightweight FNV-1a over (a + v) for integrity
     let h = 0x811c9dc5;
     for (const c of (a + '@' + v)) { h ^= c.charCodeAt(0); h = (h * 0x01000193) >>> 0; }
@@ -62,13 +62,16 @@ const DEFAULT_SETTINGS = Object.freeze({
     hotkeyCtrl: true,        // require Ctrl/Cmd
     hotkeyShift: true,       // require Shift (Ctrl/Cmd+Shift+P by default — no browser clash)
     hotkeyAlt: false,        // require Alt/Option
-    gridColumns: 5,
+    gridColumns: 'auto',     // 'auto' (adaptive) or a number 3..12
     showPersonaName: true,
     showDescriptionTooltip: true,
     glyphInHeader: true,
     menuPlacement: 'top-start',
     touchActionRow: true,    // show visible action buttons per avatar on touch devices
 });
+
+/** Hard fallback avatar image — ST ships this, guaranteed present. */
+const FALLBACK_AVATAR_URL = '/img/ai4.png';
 
 /** True if the user agent is primarily a touch/coarse-pointer device (phone/tablet). */
 const IS_TOUCH = (() => {
@@ -119,6 +122,43 @@ let keyHandler = null;
 
 const supportsPersonaThumbnails = getThumbnailUrl('persona', 'test.png', true).includes('&t=');
 
+/* ─────────────────────────── adaptive grid columns ──────────────────────────────── */
+/**
+ * Resolve the effective number of grid columns. Honors explicit numeric overrides,
+ * otherwise adapts to viewport width and pointer type.
+ *
+ *   phone      (touch + <420px) → 3
+ *   narrow     (<600px)         → 4
+ *   tablet     (<900px)         → 5
+ *   desktop    (<1400px)        → 6
+ *   ultrawide  (≥1400px)        → 7
+ *
+ * Further shrunk on very small viewports if even 3 wouldn't fit 60px cells.
+ *
+ * @param {*} raw value from settings (number, 'auto', or anything else)
+ * @returns {number} integer 3..12
+ */
+function resolveGridColumns(raw) {
+    // Explicit numeric override wins
+    const num = Number(raw);
+    if (Number.isFinite(num) && num >= 3 && num <= 12) {
+        return Math.floor(num);
+    }
+
+    // Auto mode: derive from viewport
+    const w = window.innerWidth || 1024;
+    let cols;
+    if (IS_TOUCH && w < 420)      cols = 3;
+    else if (w < 600)             cols = 4;
+    else if (w < 900)             cols = 5;
+    else if (w < 1400)            cols = 6;
+    else                          cols = 7;
+
+    // Sanity: don't exceed what fits in minor axis with ≥60px cells + padding
+    const maxFit = Math.max(3, Math.floor((w - 40) / 60));
+    return Math.min(cols, maxFit);
+}
+
 /* ──────────────────────────────── image helpers ─────────────────────────────────── */
 function getImageUrl(userAvatar) {
     if (supportsPersonaThumbnails) return getThumbnailUrl('persona', userAvatar, true);
@@ -157,15 +197,29 @@ function addQuickPersonaButton() {
         <div id="quickPersona" class="interactable" tabindex="0"
              role="button" aria-haspopup="menu" aria-expanded="false"
              title="${BRAND}" data-qpp-sig="${__QPP_PROV__.h}">
-            <img id="quickPersonaImg" alt="" src="/img/ai4.png" />
+            <img id="quickPersonaImg" alt="" src="${FALLBACK_AVATAR_URL}" />
             <div id="quickPersonaCaret" class="fa-fw fa-solid fa-caret-up"></div>
             <div id="quickPersonaLockBadge" class="qpp-lock-badge" aria-hidden="true"></div>
         </div>`;
     $('#leftSendForm').append(html);
+    // Broken-image fallback: if the persona thumbnail 404s (deleted avatar file,
+    // orphan persona entry, transient server hiccup), swap to ST's default.
+    $('#quickPersonaImg').on('error', onAvatarImgError);
     $('#quickPersona')
         .on('click', onButtonClick)
         .on('keydown', onButtonKeydown)
         .on('contextmenu', onButtonContextMenu);
+}
+
+/**
+ * Graceful image error handler: swap to the guaranteed-present default avatar,
+ * and prevent infinite error loops if the fallback itself fails.
+ * @this {HTMLImageElement}
+ */
+function onAvatarImgError() {
+    if (this.dataset.qppFellBack === '1') return;
+    this.dataset.qppFellBack = '1';
+    this.src = FALLBACK_AVATAR_URL;
 }
 
 function onButtonClick(e) {
@@ -205,11 +259,9 @@ async function openQuickPersonaSelector() {
     const cfg = settings();
     const userAvatars = cachedAvatars ?? (cachedAvatars = await getUserAvatars(false));
 
-    // Effective grid columns: auto-shrink on narrow screens to keep tap targets comfortable
-    const baseCols = Math.max(3, Math.min(12, Number(cfg.gridColumns) || 5));
-    const effCols = IS_TOUCH && window.innerWidth < 420
-        ? Math.max(3, Math.min(baseCols, Math.floor((window.innerWidth - 40) / 60)))
-        : baseCols;
+    // Resolve grid columns — honors explicit overrides, adapts for 'auto'.
+    // Recomputed on each open so orientation / window-resize naturally takes effect.
+    const effCols = resolveGridColumns(cfg.gridColumns);
 
     const showMobileToolbar = IS_TOUCH && cfg.touchActionRow;
 
@@ -388,6 +440,7 @@ function buildMenuItems($list, avatars, search) {
             </li>`);
 
         $li.find('img')
+            .on('error', onAvatarImgError)
             .attr('src', imgUrl)
             .toggleClass('selected', isSelected)
             .toggleClass('default', isDefault);
@@ -478,7 +531,7 @@ function onMenuKeydown(ev, $menu) {
     }
     if (!items.length) return;
     const cfg = settings();
-    const cols = Math.max(1, Math.min(items.length, Number(cfg.gridColumns) || 5));
+    const cols = Math.max(1, Math.min(items.length, resolveGridColumns(cfg.gridColumns)));
     const within = document.activeElement && $menu[0].contains(document.activeElement);
     if (!within && ev.key !== 'ArrowDown' && ev.key !== 'ArrowUp') return;
 
@@ -557,9 +610,16 @@ function showContextMenu(x, y, avatarId) {
 
 /* ───────────────────────────── main button refresh ──────────────────────────────── */
 function refreshButton() {
-    const imgUrl = getImageUrl(user_avatar);
-    const tooltip = formatTooltip(user_avatar);
-    $('#quickPersonaImg').attr('src', imgUrl).attr('title', tooltip);
+    // If ST hasn't finished initializing the persona yet, user_avatar is '' —
+    // avoid building a malformed thumbnail URL (which 404s and shows a broken icon).
+    const hasAvatar = typeof user_avatar === 'string' && user_avatar.length > 0;
+    const imgUrl = hasAvatar ? getImageUrl(user_avatar) : FALLBACK_AVATAR_URL;
+    const tooltip = hasAvatar ? formatTooltip(user_avatar) : BRAND;
+
+    const $img = $('#quickPersonaImg');
+    // Reset the 'already-fell-back' flag so the fresh URL gets a fair attempt.
+    $img.removeAttr('data-qpp-fell-back');
+    $img.attr('src', imgUrl).attr('title', tooltip);
     $('#quickPersona').attr('title', tooltip);
 
     // Lock badge on main button
@@ -740,8 +800,15 @@ function renderSettingsPanel() {
 
                 <div class="qpp-row qpp-mt">
                     <label for="qpp-gridColumns">${t`Grid columns`}</label>
+                    <label class="checkbox_label qpp-inline">
+                        <input type="checkbox" id="qpp-gridAuto" ${cfg.gridColumns === 'auto' ? 'checked' : ''}>
+                        <span>${t`Auto`}</span>
+                    </label>
                     <input type="number" id="qpp-gridColumns" min="3" max="12" step="1"
-                           class="text_pole qpp-num" value="${Number(cfg.gridColumns) || 5}">
+                           class="text_pole qpp-num"
+                           ${cfg.gridColumns === 'auto' ? 'disabled' : ''}
+                           value="${cfg.gridColumns === 'auto' ? resolveGridColumns('auto') : (Number(cfg.gridColumns) || 5)}">
+                    <span class="qpp-muted qpp-grid-auto-hint"></span>
                 </div>
                 <div class="qpp-row">
                     <label for="qpp-menuPlacement">${t`Menu placement`}</label>
@@ -798,7 +865,35 @@ function renderSettingsPanel() {
         cfg.gridColumns = n;
         this.value = String(n);
         saveSettingsDebounced();
+        updateGridAutoHint();
     });
+    $('#qpp-gridAuto').on('change', function () {
+        const $num = $('#qpp-gridColumns');
+        if (this.checked) {
+            cfg.gridColumns = 'auto';
+            $num.prop('disabled', true).val(String(resolveGridColumns('auto')));
+        } else {
+            // Falling back to explicit: take the currently computed auto value as the starting point
+            const n = resolveGridColumns('auto');
+            cfg.gridColumns = n;
+            $num.prop('disabled', false).val(String(n));
+        }
+        saveSettingsDebounced();
+        updateGridAutoHint();
+    });
+
+    function updateGridAutoHint() {
+        const $hint = $('.qpp-grid-auto-hint');
+        if (cfg.gridColumns === 'auto') {
+            const n = resolveGridColumns('auto');
+            const w = window.innerWidth;
+            const suffix = IS_TOUCH ? t`, touch` : '';
+            $hint.text(t`(= ${n} columns at ${w}px${suffix})`);
+        } else {
+            $hint.text('');
+        }
+    }
+    updateGridAutoHint();
     $('#qpp-menuPlacement').on('change', function () {
         cfg.menuPlacement = String(this.value || 'top-start');
         saveSettingsDebounced();
