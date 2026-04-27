@@ -4,7 +4,7 @@
 
 ### _Supercharged persona switcher for SillyTavern_
 
-[![Version](https://img.shields.io/badge/version-1.0.4-b48cff?style=flat-square)](./manifest.json)
+[![Version](https://img.shields.io/badge/version-1.0.5-b48cff?style=flat-square)](./manifest.json)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-7ec4ff?style=flat-square)](./LICENSE)
 [![SillyTavern](https://img.shields.io/badge/SillyTavern-1.12%2B-ffd27e?style=flat-square)](https://github.com/SillyTavern/SillyTavern)
 [![i18n](https://img.shields.io/badge/i18n-EN%20%2F%20RU-golden?style=flat-square)](./i18n.json)
@@ -166,6 +166,22 @@ Settings are stored under `extension_settings.quickPersonaPro` and sync across d
 The extension auto-loads its `i18n.json` on startup and registers Russian strings via SillyTavern's `addLocaleData` API. Set your SillyTavern language to Russian to see it.
 
 Want to contribute another language? Just add a key to [`i18n.json`](./i18n.json) and open a PR.
+
+---
+
+## ⚡ Performance
+
+The menu used to re-download every thumbnail on every open because the original extension appended `&t={timestamp}` cache-busters to every image URL. With 30 personas on a slow connection this was **very** laggy. v1.0.5 ships a suite of fixes:
+
+- **Cacheable thumbnail URLs** — dropped the per-open cache-buster on Chromium / WebKit (matches what SillyTavern's own Persona Management panel does). Subsequent menu opens hit the browser cache → near-instant. Firefox keeps cache-busting because of a known browser bug. ST already invalidates the cache correctly whenever a persona is replaced or renamed.
+- **Lazy loading** — `loading="lazy"` on every menu thumbnail. Avatars below the fold in the scrollable grid don't fetch until the user scrolls to them.
+- **Async decoding** — `decoding="async"` lets the browser decode images off the main thread, no more paint jank when the menu opens.
+- **Intrinsic dimensions** — `width="96" height="144"` attributes let the browser reserve layout space before bytes arrive, so images pop in without reflowing the grid.
+- **Fetch priority** — the currently-selected persona gets `fetchpriority="high"` so it loads first on slow connections.
+- **DocumentFragment batching** — all menu items are built in one fragment and inserted with a single DOM operation. One reflow for N items instead of N reflows. Noticeable on large persona collections (50+).
+- **Idempotent src updates** — the main button doesn't re-assign `src` when the URL hasn't changed, avoiding needless image re-decodes on frequent `PERSONA_CHANGED` events.
+
+Result: menu opens that used to take 1–2 seconds on a slow phone now feel instant after the first open.
 
 ---
 

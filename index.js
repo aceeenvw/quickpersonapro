@@ -37,7 +37,7 @@ import { SlashCommandArgument, SlashCommandNamedArgument, ARGUMENT_TYPE } from '
 const __QPP_PROV__ = (() => {
     const seed = [0x61, 0x63, 0x65, 0x65, 0x6e, 0x76, 0x77];
     const a = String.fromCharCode.apply(null, seed);
-    const v = '1.0.4';
+    const v = '1.0.5';
     // Lightweight FNV-1a over (a + v) for integrity
     let h = 0x811c9dc5;
     for (const c of (a + '@' + v)) { h ^= c.charCodeAt(0); h = (h * 0x01000193) >>> 0; }
@@ -71,6 +71,9 @@ const DEFAULT_SETTINGS = Object.freeze({
 
 /** Hard fallback avatar image — ST ships this, guaranteed present. */
 const FALLBACK_AVATAR_URL = '/img/ai4.png';
+
+/** Intrinsic thumbnail dimensions ST's server produces for `type=persona`. */
+const THUMB_W = 96, THUMB_H = 144;
 
 /** True if the user agent is primarily a touch/coarse-pointer device (phone/tablet). */
 const IS_TOUCH = (() => {
@@ -290,8 +293,28 @@ function resolveGridColumns(raw) {
 }
 
 /* ──────────────────────────────── image helpers ─────────────────────────────────── */
+/**
+ * Resolve a thumbnail URL for the given persona avatar id.
+ *
+ * Returns a CACHEABLE URL (no `?t=...` cache-buster) on Chromium / WebKit —
+ * matching what SillyTavern's own Persona Management panel does. Cache-busting
+ * is only applied on Firefox, which has a known caching bug with query-string
+ * thumbnail URLs (see personas.js:204 using `isFirefox()`).
+ *
+ * Dropping the cache-buster is the single biggest perf win for this menu:
+ * users with many personas used to re-download every thumbnail on every open.
+ * ST already invalidates the cache correctly whenever a persona is uploaded /
+ * renamed / replaced (via `cache: 'reload'` fetches in personas.js:400), so
+ * we don't need to do it ourselves.
+ */
+const IS_FIREFOX = /firefox/i.test(navigator.userAgent || '');
+
 function getImageUrl(userAvatar) {
-    if (supportsPersonaThumbnails) return getThumbnailUrl('persona', userAvatar, true);
+    if (supportsPersonaThumbnails) {
+        return getThumbnailUrl('persona', userAvatar, IS_FIREFOX);
+    }
+    // Fallback path for very old ST versions — still cache-bust here since
+    // the raw /User Avatars/ endpoint has no cache invalidation hooks.
     return `${getUserAvatar(userAvatar)}?t=${Date.now()}`;
 }
 
@@ -327,7 +350,10 @@ function addQuickPersonaButton() {
         <div id="quickPersona" class="interactable" tabindex="0"
              role="button" aria-haspopup="menu" aria-expanded="false"
              title="${BRAND}" data-qpp-sig="${__QPP_PROV__.h}">
-            <img id="quickPersonaImg" alt="" src="${FALLBACK_AVATAR_URL}" />
+            <img id="quickPersonaImg" alt=""
+                 src="${FALLBACK_AVATAR_URL}"
+                 decoding="async" fetchpriority="high"
+                 width="${THUMB_W}" height="${THUMB_H}" />
             <div id="quickPersonaCaret" class="fa-fw fa-solid fa-caret-up"></div>
             <div id="quickPersonaLockBadge" class="qpp-lock-badge" aria-hidden="true"></div>
         </div>`;
@@ -528,8 +554,19 @@ function closeQuickPersonaSelector() {
 }
 
 /* ─────────────────────────────── menu item building ─────────────────────────────── */
+/**
+ * Build the persona grid into `$list`. Optimized for speed:
+ *  - Native DOM via a single DocumentFragment (one reflow instead of N).
+ *  - Cacheable image URLs (see getImageUrl) — no more per-open re-downloads.
+ *  - `loading="lazy"` — off-screen avatars in the scroll area fetch on demand.
+ *  - `decoding="async"` — image decode off the main thread, no paint jank.
+ *  - Intrinsic `width`/`height` attributes — browser reserves layout space
+ *    before the bytes arrive, eliminating reflow when images pop in.
+ *  - `fetchpriority="high"` on the currently-selected persona so it loads first.
+ */
 function buildMenuItems($list, avatars, search) {
-    $list.empty();
+    const listEl = $list[0];
+    listEl.textContent = ''; // faster than $list.empty()
 
     let filtered = avatars;
     if (search) {
@@ -543,49 +580,75 @@ function buildMenuItems($list, avatars, search) {
     }
 
     if (!filtered.length) {
-        $list.append(`<li class="qpp-empty" aria-disabled="true">${t`No personas match.`}</li>`);
+        const empty = document.createElement('li');
+        empty.className = 'qpp-empty';
+        empty.setAttribute('aria-disabled', 'true');
+        empty.textContent = t`No personas match.`;
+        listEl.appendChild(empty);
         return;
     }
 
     const cfg = settings();
+    const showName = !!cfg.showPersonaName;
+    const showLocks = !!cfg.enableLockIndicators;
+    const frag = document.createDocumentFragment();
+
     for (const avatarId of filtered) {
         const { name } = personaMeta(avatarId);
         const imgUrl = getImageUrl(avatarId);
         const tooltip = formatTooltip(avatarId);
         const isSelected = avatarId === user_avatar;
         const isDefault = avatarId === power_user.default_persona;
-        const chatLocked = cfg.enableLockIndicators && isSelected && isPersonaLocked('chat');
-        const charLocked = cfg.enableLockIndicators && isSelected && isPersonaLocked('character');
+        const chatLocked = showLocks && isSelected && isPersonaLocked('chat');
+        const charLocked = showLocks && isSelected && isPersonaLocked('character');
 
-        // Build the <li> WITHOUT the avatarId in an HTML attribute: persona
-        // filenames commonly contain dots and other characters that previously
-        // got mangled by CSS.escape-style attribute escaping, breaking clicks.
-        // Store the raw ID on the DOM node via jQuery .data() instead.
-        const $li = $(`
-            <li tabindex="0" class="list-group-item interactable qpp-item" role="menuitem"
-                title="${escapeAttr(tooltip)}">
-                <img class="quickPersonaMenuImg" alt="" />
-                <div class="qpp-lock-stack" aria-hidden="true">
-                    ${isDefault ? '<i class="qpp-lk qpp-lk-default fa-solid fa-star" title="default"></i>' : ''}
-                    ${chatLocked ? '<i class="qpp-lk qpp-lk-chat fa-solid fa-comment"></i>' : ''}
-                    ${charLocked ? '<i class="qpp-lk qpp-lk-char fa-solid fa-user-lock"></i>' : ''}
-                </div>
-                ${cfg.showPersonaName ? `<div class="qpp-item-name">${escapeHtml(name)}</div>` : ''}
-            </li>`);
+        const li = document.createElement('li');
+        li.className = 'list-group-item interactable qpp-item';
+        li.tabIndex = 0;
+        li.setAttribute('role', 'menuitem');
+        li.title = tooltip;
+        // Stash the raw avatar id in jQuery's internal data cache — untouched by
+        // HTML attribute (de)serialization, so filenames with dots round-trip safely.
+        $(li).data('avatarId', avatarId);
 
-        // Attach the raw, unescaped avatar id in jQuery's internal data store —
-        // retrieved later via $(el).data('avatarId'). Never goes through HTML
-        // attribute (de)serialization so arbitrary filenames round-trip safely.
-        $li.data('avatarId', avatarId);
+        const img = document.createElement('img');
+        img.className = 'quickPersonaMenuImg';
+        img.alt = '';
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        // Intrinsic size — browser reserves layout space, no reflow on load.
+        img.width = THUMB_W;
+        img.height = THUMB_H;
+        // Boost priority for the currently-active persona (Chromium; ignored elsewhere).
+        if (isSelected) img.setAttribute('fetchpriority', 'high');
+        if (isSelected) img.classList.add('selected');
+        if (isDefault)  img.classList.add('default');
+        img.addEventListener('error', onAvatarImgError);
+        img.src = imgUrl;
+        li.appendChild(img);
 
-        $li.find('img')
-            .on('error', onAvatarImgError)
-            .attr('src', imgUrl)
-            .toggleClass('selected', isSelected)
-            .toggleClass('default', isDefault);
+        if (isDefault || chatLocked || charLocked) {
+            const stack = document.createElement('div');
+            stack.className = 'qpp-lock-stack';
+            stack.setAttribute('aria-hidden', 'true');
+            if (isDefault)   stack.insertAdjacentHTML('beforeend', '<i class="qpp-lk qpp-lk-default fa-solid fa-star"></i>');
+            if (chatLocked)  stack.insertAdjacentHTML('beforeend', '<i class="qpp-lk qpp-lk-chat fa-solid fa-comment"></i>');
+            if (charLocked)  stack.insertAdjacentHTML('beforeend', '<i class="qpp-lk qpp-lk-char fa-solid fa-user-lock"></i>');
+            li.appendChild(stack);
+        }
 
-        $list.append($li);
+        if (showName) {
+            const label = document.createElement('div');
+            label.className = 'qpp-item-name';
+            label.textContent = name; // textContent = no HTML escape needed
+            li.appendChild(label);
+        }
+
+        frag.appendChild(li);
     }
+
+    // Single reflow for N items — crucial for large persona collections.
+    listEl.appendChild(frag);
 }
 
 /* ───────────────────────────── interaction handlers ─────────────────────────────── */
@@ -775,10 +838,19 @@ function refreshButton() {
     const imgUrl = hasAvatar ? getImageUrl(user_avatar) : FALLBACK_AVATAR_URL;
     const tooltip = hasAvatar ? formatTooltip(user_avatar) : BRAND;
 
-    const $img = $('#quickPersonaImg');
-    // Reset the 'already-fell-back' flag so the fresh URL gets a fair attempt.
-    $img.removeAttr('data-qpp-fell-back');
-    $img.attr('src', imgUrl).attr('title', tooltip);
+    const imgEl = document.getElementById('quickPersonaImg');
+    if (imgEl) {
+        // Only reset `src` when actually changing — avoids a needless re-decode.
+        // Compare to `src` getter (which resolves to absolute URL) via a cache attribute.
+        const prev = imgEl.getAttribute('data-qpp-src');
+        if (prev !== imgUrl) {
+            imgEl.dataset.qppSrc = imgUrl;
+            // Clear the "already fell back" marker so the fresh URL gets a fair attempt
+            delete imgEl.dataset.qppFellBack;
+            imgEl.src = imgUrl;
+        }
+        imgEl.title = tooltip;
+    }
     $('#quickPersona').attr('title', tooltip);
 
     // Lock badge on main button
