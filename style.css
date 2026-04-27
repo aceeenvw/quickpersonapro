@@ -1,17 +1,16 @@
 /*
- * ⊹ Quick Persona Pro ⊹
- * Theme-aware styling. Works with light/dark/custom ST themes.
+ * ⊹ QUICK PERSONA PRO ⊹
+ * Theme-aware styling, honors ST's SmartTheme CSS variables.
  */
 
-/* ────────────────── main button ────────────────── */
+/* ─── main button ─────────────────────────────────────────────────────── */
 #quickPersona {
     position: relative;
     width: var(--bottomFormBlockSize);
     height: var(--bottomFormBlockSize);
     order: 10;
     transition: transform 0.15s ease, box-shadow 0.3s ease;
-    /* Native-gesture suppression: stops Android/iOS from hijacking long-press
-       with image-save / text-select popups that compete with our menu. */
+    /* Suppresses Android/iOS native long-press popups that would compete with ours. */
     touch-action: manipulation;
     user-select: none;
     -webkit-user-select: none;
@@ -68,7 +67,6 @@ body.big-avatars .quickPersonaMenuImg {
     pointer-events: none;
 }
 
-/* Lock badge on main button */
 .qpp-lock-badge {
     position: absolute;
     left: -2px;
@@ -92,7 +90,7 @@ body.big-avatars .quickPersonaMenuImg {
 .qpp-lock-badge.qpp-lock-char    { color: #ffd27e; }
 .qpp-lock-badge.qpp-lock-default { color: var(--golden); }
 
-/* ────────────────── dropdown menu ────────────────── */
+/* ─── dropdown menu ───────────────────────────────────────────────────── */
 #quickPersonaMenu {
     z-index: 30000;
     backdrop-filter: blur(var(--SmartThemeBlurStrength));
@@ -106,9 +104,7 @@ body.big-avatars .quickPersonaMenuImg {
     max-width: min(92vw, 520px);
     --qpp-cols: 5;
     --qpp-cell: 50px;
-    /* Menu-wide: prevent accidental double-tap-zoom on mobile. The search
-       field overrides this where text-selection needs to stay normal. */
-    touch-action: manipulation;
+    touch-action: manipulation; /* search input overrides below */
 }
 
 #quickPersonaMenu .qpp-search {
@@ -166,7 +162,6 @@ body.big-avatars #quickPersonaMenu {
     outline: none;
 }
 
-/* Search */
 #quickPersonaMenu .qpp-search-wrap {
     position: relative;
     margin: 0 2px 6px 2px;
@@ -189,7 +184,6 @@ body.big-avatars #quickPersonaMenu {
     border-radius: 6px;
 }
 
-/* Grid list */
 #quickPersonaMenu ul.qpp-grid {
     list-style: none;
     margin: 0;
@@ -212,9 +206,6 @@ body.big-avatars #quickPersonaMenu {
     margin: 0;
     border-radius: 8px;
     transition: transform 0.15s ease, box-shadow 0.38s ease;
-    /* Same native-gesture suppression as the main button — this is the main
-       reason long-press fails on many phones: the OS opens its own popup
-       before our timer elapses. */
     touch-action: manipulation;
     user-select: none;
     -webkit-user-select: none;
@@ -222,9 +213,7 @@ body.big-avatars #quickPersonaMenu {
     -webkit-tap-highlight-color: transparent;
 }
 
-/* Long-press-in-progress feedback. The 380ms transition matches the 400ms
-   press duration so the ring visibly "fills in" as the finger holds down,
-   giving the user feedback that they're on the right track. */
+/* Long-press feedback — glow fills in over ~400ms so the user sees progress. */
 #quickPersonaMenu ul.qpp-grid li.qpp-pressing,
 #quickPersona.qpp-pressing {
     transform: scale(1.08);
@@ -238,7 +227,6 @@ body.big-avatars #quickPersonaMenu {
     outline-color: var(--SmartThemeQuoteColor, #b48cff);
 }
 
-/* Give room for the name label under avatar when enabled */
 #quickPersonaMenu ul.qpp-grid li:has(.qpp-item-name) {
     height: calc(var(--qpp-cell) + 16px);
 }
@@ -283,7 +271,6 @@ body.big-avatars #quickPersonaMenu {
     font-style: italic;
 }
 
-/* Lock stack overlay on avatars */
 .qpp-lock-stack {
     position: absolute;
     top: -2px;
@@ -311,7 +298,6 @@ body.big-avatars #quickPersonaMenu {
 .qpp-lk-chat    { color: #7ec4ff; }
 .qpp-lk-char    { color: #ffd27e; }
 
-/* Footer */
 .qpp-menu-footer {
     margin-top: 6px;
     padding: 4px 6px 2px 6px;
@@ -345,7 +331,7 @@ body.big-avatars #quickPersonaMenu {
 .qpp-chip-chat    { color: #7ec4ff; }
 .qpp-chip-char    { color: #ffd27e; }
 
-/* ────────────────── context menu ────────────────── */
+/* ─── context menu ────────────────────────────────────────────────────── */
 .qpp-context-menu {
     position: fixed;
     z-index: 30100;
@@ -403,7 +389,7 @@ body.big-avatars #quickPersonaMenu {
     background: var(--white20a);
 }
 
-/* ────────────────── settings panel ────────────────── */
+/* ─── settings panel ──────────────────────────────────────────────────── */
 #qpp-settings-panel {
     margin-top: 10px;
 }
@@ -473,7 +459,7 @@ body.big-avatars #quickPersonaMenu {
     opacity: 0.85;
 }
 
-/* ────────────────── mobile quick-action toolbar ────────────────── */
+/* ─── mobile quick-action toolbar ─────────────────────────────────────── */
 #quickPersonaMenu .qpp-touch-toolbar {
     display: flex;
     gap: 6px;
@@ -527,7 +513,6 @@ body.big-avatars #quickPersonaMenu {
 #quickPersonaMenu .qpp-tb-btn[data-touch-action="lock-char"].qpp-active    { color: #ffd27e; border-color: #ffd27e; background: #ffd27e22; }
 #quickPersonaMenu .qpp-tb-btn[data-touch-action="default"].qpp-active      { color: var(--golden); border-color: var(--golden); background: #ffd70022; }
 
-/* Touch hint */
 #quickPersonaMenu .qpp-hint {
     margin-top: 4px;
     padding: 4px 6px;
@@ -537,11 +522,10 @@ body.big-avatars #quickPersonaMenu {
     font-style: italic;
 }
 
-/* Close button shown only on touch (desktop can just click outside) */
 #quickPersonaMenu .qpp-close-mobile { display: none; }
 #quickPersonaMenu.qpp-touch .qpp-close-mobile { display: inline-flex; }
 
-/* ────────────────── coarse-pointer / mobile overrides ────────────────── */
+/* ─── coarse-pointer (mobile) overrides ───────────────────────────────── */
 @media (pointer: coarse) {
 
     #quickPersonaMenu {
