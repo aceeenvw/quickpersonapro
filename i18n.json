@@ -1,11 +1,13 @@
 {
     "ru-ru": {
-        "Quick Persona": "Быстрая персона",
+        "QUICK PERSONA PRO": "БЫСТРАЯ ПЕРСОНА PRO",
         "Search personas…": "Поиск персон…",
         "Search personas": "Поиск персон",
         "No personas match.": "Нет совпадений.",
         "Create new persona": "Создать новую персону",
         "Open Persona Management": "Открыть управление персонами",
+        "Close": "Закрыть",
+
         "Select persona": "Выбрать персону",
         "Lock to chat": "Закрепить за чатом",
         "Unlock from chat": "Открепить от чата",
@@ -19,6 +21,12 @@
         "default": "основная",
         "Persona not found: ${0}": "Персона не найдена: ${0}",
 
+        "Quick lock actions for current persona": "Быстрые действия для текущей персоны",
+        "Chat": "Чат",
+        "Character": "Персонаж",
+        "Default": "Основная",
+        "Tip: long-press any persona for more actions.": "Совет: удерживайте любую персону для дополнительных действий.",
+
         "Supercharged persona switcher. Based on Quick Persona by Cohee1207.": "Улучшенный переключатель персон. Основан на Quick Persona от Cohee1207.",
         "Enable search bar": "Включить строку поиска",
         "Enable keyboard navigation (arrows / Enter / Esc)": "Включить навигацию с клавиатуры (стрелки / Enter / Esc)",
@@ -27,7 +35,10 @@
         "Show persona name under each avatar": "Показывать имя под аватаркой",
         "Show description preview in tooltip": "Показывать описание во всплывающей подсказке",
         "Decorative glyphs": "Декоративные глифы",
+        "Show mobile quick-action toolbar (touch devices)": "Показывать мобильную панель быстрых действий (сенсорные устройства)",
         "Global hotkey": "Глобальная горячая клавиша",
+        "Default is Ctrl/Cmd + Shift + P (avoids the browser's Print shortcut).": "По умолчанию: Ctrl/Cmd + Shift + P (чтобы не конфликтовать с «Печать» в браузере).",
+        "(disabled)": "(отключено)",
         "Grid columns": "Колонок в сетке",
         "Menu placement": "Положение меню",
         "Reset defaults": "Сбросить настройки",

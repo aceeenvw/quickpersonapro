@@ -404,3 +404,166 @@ body.big-avatars #quickPersonaMenu {
     font-family: monospace;
     text-transform: lowercase;
 }
+
+#qpp-settings-panel .qpp-hotkey-block {
+    border: 1px solid var(--white20a);
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-top: 10px;
+}
+
+#qpp-settings-panel .qpp-hotkey-row {
+    display: flex;
+    align-items: center;
+    gap: 6px 10px;
+    flex-wrap: wrap;
+    margin: 6px 0 4px 0;
+}
+
+#qpp-settings-panel .checkbox_label.qpp-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0;
+}
+
+#qpp-settings-panel .qpp-hotkey-preview {
+    font-family: monospace;
+    font-size: 0.9em;
+    opacity: 0.85;
+}
+
+/* ────────────────── mobile quick-action toolbar ────────────────── */
+#quickPersonaMenu .qpp-touch-toolbar {
+    display: flex;
+    gap: 6px;
+    padding: 6px 4px 4px 4px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid var(--white20a);
+    justify-content: space-between;
+}
+
+#quickPersonaMenu .qpp-tb-btn {
+    flex: 1 1 0;
+    min-height: 44px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 6px 4px;
+    border-radius: 8px;
+    background: var(--white10a);
+    border: 1px solid var(--white20a);
+    color: var(--SmartThemeBodyColor, var(--white70a));
+    font-size: 0.7em;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.12s ease, transform 0.08s ease;
+}
+
+#quickPersonaMenu .qpp-tb-btn i {
+    font-size: 1.2em;
+    opacity: 0.9;
+}
+
+#quickPersonaMenu .qpp-tb-btn:hover,
+#quickPersonaMenu .qpp-tb-btn:focus-visible {
+    background: var(--white20a);
+    outline: none;
+}
+
+#quickPersonaMenu .qpp-tb-btn:active {
+    transform: scale(0.95);
+}
+
+#quickPersonaMenu .qpp-tb-btn.qpp-active {
+    background: var(--SmartThemeQuoteColor, #b48cff33);
+    border-color: var(--SmartThemeQuoteColor, #b48cff);
+    color: var(--SmartThemeQuoteColor, #b48cff);
+}
+
+#quickPersonaMenu .qpp-tb-btn[data-touch-action="lock-chat"].qpp-active    { color: #7ec4ff; border-color: #7ec4ff; background: #7ec4ff22; }
+#quickPersonaMenu .qpp-tb-btn[data-touch-action="lock-char"].qpp-active    { color: #ffd27e; border-color: #ffd27e; background: #ffd27e22; }
+#quickPersonaMenu .qpp-tb-btn[data-touch-action="default"].qpp-active      { color: var(--golden); border-color: var(--golden); background: #ffd70022; }
+
+/* Touch hint */
+#quickPersonaMenu .qpp-hint {
+    margin-top: 4px;
+    padding: 4px 6px;
+    font-size: 0.75em;
+    text-align: center;
+    opacity: 0.5;
+    font-style: italic;
+}
+
+/* Close button shown only on touch (desktop can just click outside) */
+#quickPersonaMenu .qpp-close-mobile { display: none; }
+#quickPersonaMenu.qpp-touch .qpp-close-mobile { display: inline-flex; }
+
+/* ────────────────── coarse-pointer / mobile overrides ────────────────── */
+@media (pointer: coarse) {
+
+    #quickPersonaMenu {
+        --qpp-cell: 56px;
+        min-width: min(320px, 92vw);
+        max-width: 96vw;
+        padding: 8px;
+    }
+
+    #quickPersonaMenu ul.qpp-grid {
+        gap: 10px;
+        max-height: 55svh;
+    }
+
+    #quickPersonaMenu ul.qpp-grid li:has(.qpp-item-name) {
+        height: calc(var(--qpp-cell) + 18px);
+    }
+
+    #quickPersonaMenu ul.qpp-grid li .qpp-item-name {
+        font-size: 0.72em;
+    }
+
+    #quickPersonaMenu .qpp-icon-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 1.05em;
+    }
+
+    #quickPersonaMenu .qpp-menu-title {
+        font-size: 1.0em;
+    }
+
+    #quickPersonaMenu .qpp-search {
+        font-size: 16px; /* prevents iOS Safari auto-zoom on focus */
+        padding: 8px 8px 8px 30px;
+    }
+
+    .qpp-lk {
+        width: 16px;
+        height: 16px;
+        font-size: 9px;
+    }
+
+    .qpp-context-menu {
+        min-width: 240px;
+    }
+
+    .qpp-cm-item {
+        padding: 10px 12px;
+        font-size: 0.95em;
+    }
+
+    /* Bigger lock badge on main button so it's readable on small screens */
+    .qpp-lock-badge {
+        width: calc(var(--bottomFormBlockSize) / 2.4);
+        height: calc(var(--bottomFormBlockSize) / 2.4);
+    }
+}
+
+@media (max-width: 480px) {
+    #quickPersonaMenu {
+        min-width: min(300px, 94vw);
+    }
+}
+

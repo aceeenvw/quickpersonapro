@@ -1,15 +1,15 @@
 {
-    "display_name": "⊹ Quick Persona Pro ⊹",
+    "display_name": "⊹ QUICK PERSONA PRO ⊹",
     "loading_order": 100,
     "requires": [],
     "optional": [],
     "js": "index.js",
     "css": "style.css",
     "author": "aceenvw",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "homePage": "https://github.com/aceeenvw/quickpersonapro",
     "auto_update": true,
     "minimum_version": "1.12.0",
-    "description": "Supercharged persona switcher with search, keyboard nav, lock indicators, context menu, hotkey and slash commands. Based on Quick Persona by Cohee1207.",
+    "description": "⊹ QUICK PERSONA PRO ⊹ — Supercharged persona switcher with search, keyboard nav, lock indicators, context menu, hotkey and slash commands. Based on Quick Persona by Cohee1207.",
     "type": "quick-persona-pro"
 }

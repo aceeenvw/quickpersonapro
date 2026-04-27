@@ -1,5 +1,5 @@
 /*
- * ⊹ Quick Persona Pro ⊹
+ * ⊹ QUICK PERSONA PRO ⊹
  * Supercharged persona switcher for SillyTavern.
  * Based on Extension-QuickPersona by Cohee1207 (AGPL-3.0).
  * Fork author: aceenvw  —  https://github.com/aceeenvw/quickpersonapro
@@ -24,6 +24,7 @@ import {
 import { extension_settings } from '../../../extensions.js';
 import { Popper, Fuse } from '../../../../lib.js';
 import { t, addLocaleData, getCurrentLocale } from '../../../i18n.js';
+import { addLongPressEvent } from '../../../utils.js';
 import { SlashCommand } from '../../../slash-commands/SlashCommand.js';
 import { SlashCommandParser } from '../../../slash-commands/SlashCommandParser.js';
 import { SlashCommandArgument, SlashCommandNamedArgument, ARGUMENT_TYPE } from '../../../slash-commands/SlashCommandArgument.js';
@@ -37,7 +38,7 @@ import { SlashCommandArgument, SlashCommandNamedArgument, ARGUMENT_TYPE } from '
 const __QPP_PROV__ = (() => {
     const seed = [0x61, 0x63, 0x65, 0x65, 0x6e, 0x76, 0x77];
     const a = String.fromCharCode.apply(null, seed);
-    const v = '1.0.0';
+    const v = '1.0.1';
     // Lightweight FNV-1a over (a + v) for integrity
     let h = 0x811c9dc5;
     for (const c of (a + '@' + v)) { h ^= c.charCodeAt(0); h = (h * 0x01000193) >>> 0; }
@@ -48,7 +49,7 @@ const __QPP_PROV__ = (() => {
 
 const MODULE = 'quickPersonaPro';
 const GLYPH = '⊹';
-const BRAND = `${GLYPH} Quick Persona Pro ${GLYPH}`;
+const BRAND = `${GLYPH} QUICK PERSONA PRO ${GLYPH}`;
 
 /* ────────────────────────────────── settings schema ─────────────────────────────── */
 const DEFAULT_SETTINGS = Object.freeze({
@@ -57,13 +58,26 @@ const DEFAULT_SETTINGS = Object.freeze({
     enableContextMenu: true,
     enableLockIndicators: true,
     enableHotkey: true,
-    hotkey: 'p',          // Ctrl/Cmd + hotkey
+    hotkey: 'p',             // the key (single char)
+    hotkeyCtrl: true,        // require Ctrl/Cmd
+    hotkeyShift: true,       // require Shift (Ctrl/Cmd+Shift+P by default — no browser clash)
+    hotkeyAlt: false,        // require Alt/Option
     gridColumns: 5,
     showPersonaName: true,
     showDescriptionTooltip: true,
     glyphInHeader: true,
     menuPlacement: 'top-start',
+    touchActionRow: true,    // show visible action buttons per avatar on touch devices
 });
+
+/** True if the user agent is primarily a touch/coarse-pointer device (phone/tablet). */
+const IS_TOUCH = (() => {
+    try {
+        return window.matchMedia?.('(pointer: coarse)').matches
+            || ('ontouchstart' in window)
+            || (navigator.maxTouchPoints > 0);
+    } catch { return false; }
+})();
 
 function settings() {
     if (!extension_settings[MODULE] || typeof extension_settings[MODULE] !== 'object') {
@@ -191,30 +205,62 @@ async function openQuickPersonaSelector() {
     const cfg = settings();
     const userAvatars = cachedAvatars ?? (cachedAvatars = await getUserAvatars(false));
 
+    // Effective grid columns: auto-shrink on narrow screens to keep tap targets comfortable
+    const baseCols = Math.max(3, Math.min(12, Number(cfg.gridColumns) || 5));
+    const effCols = IS_TOUCH && window.innerWidth < 420
+        ? Math.max(3, Math.min(baseCols, Math.floor((window.innerWidth - 40) / 60)))
+        : baseCols;
+
+    const showMobileToolbar = IS_TOUCH && cfg.touchActionRow;
+
     const $menu = $(`
-        <div id="quickPersonaMenu" role="menu" aria-label="${BRAND}">
+        <div id="quickPersonaMenu" role="menu" aria-label="${BRAND}"
+             class="${IS_TOUCH ? 'qpp-touch' : 'qpp-mouse'}">
             <div class="qpp-menu-header">
-                <div class="qpp-menu-title">${cfg.glyphInHeader ? `${GLYPH} ` : ''}${t`Quick Persona`}${cfg.glyphInHeader ? ` ${GLYPH}` : ''}</div>
+                <div class="qpp-menu-title">${cfg.glyphInHeader ? `${GLYPH} ` : ''}${t`QUICK PERSONA PRO`}${cfg.glyphInHeader ? ` ${GLYPH}` : ''}</div>
                 <div class="qpp-menu-actions">
                     <div class="qpp-icon-btn fa-solid fa-plus" data-action="new"
                          title="${t`Create new persona`}" tabindex="0" role="button"></div>
                     <div class="qpp-icon-btn fa-solid fa-gear" data-action="manage"
                          title="${t`Open Persona Management`}" tabindex="0" role="button"></div>
+                    <div class="qpp-icon-btn fa-solid fa-xmark qpp-close-mobile" data-action="close"
+                         title="${t`Close`}" tabindex="0" role="button"></div>
                 </div>
             </div>
+            ${showMobileToolbar ? `
+                <div class="qpp-touch-toolbar" role="toolbar" aria-label="${t`Quick lock actions for current persona`}">
+                    <button class="qpp-tb-btn" data-touch-action="lock-chat" type="button"
+                            title="${t`Lock to chat`}">
+                        <i class="fa-solid fa-comment"></i>
+                        <span>${t`Chat`}</span>
+                    </button>
+                    <button class="qpp-tb-btn" data-touch-action="lock-char" type="button"
+                            title="${t`Lock to character`}">
+                        <i class="fa-solid fa-user-lock"></i>
+                        <span>${t`Character`}</span>
+                    </button>
+                    <button class="qpp-tb-btn" data-touch-action="default" type="button"
+                            title="${t`Set as default`}">
+                        <i class="fa-solid fa-star"></i>
+                        <span>${t`Default`}</span>
+                    </button>
+                </div>` : ''}
             ${cfg.enableSearch ? `
                 <div class="qpp-search-wrap">
                     <i class="fa-solid fa-magnifying-glass qpp-search-icon"></i>
                     <input type="text" class="qpp-search text_pole"
                            placeholder="${t`Search personas…`}"
-                           aria-label="${t`Search personas`}" />
+                           aria-label="${t`Search personas`}"
+                           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
                 </div>` : ''}
-            <ul class="list-group qpp-grid" style="--qpp-cols:${Math.max(3, Math.min(12, Number(cfg.gridColumns) || 5))};"></ul>
+            <ul class="list-group qpp-grid" style="--qpp-cols:${effCols};"></ul>
             ${cfg.showPersonaName ? `<div class="qpp-menu-footer"><span class="qpp-current-name"></span></div>` : ''}
+            ${IS_TOUCH ? `<div class="qpp-hint">${t`Tip: long-press any persona for more actions.`}</div>` : ''}
         </div>`);
 
     buildMenuItems($menu.find('.qpp-grid'), userAvatars, '');
     updateFooter($menu);
+    if (showMobileToolbar) syncTouchToolbarState($menu);
 
     $menu.hide().appendTo(document.body);
 
@@ -240,6 +286,7 @@ async function openQuickPersonaSelector() {
     $menu.on('click', '.qpp-grid li', onPersonaItemClick);
     $menu.on('contextmenu', '.qpp-grid li', onPersonaItemContextMenu);
     $menu.on('click', '[data-action]', onMenuAction);
+    $menu.on('click', '[data-touch-action]', onTouchToolbarAction);
 
     if (cfg.enableSearch) {
         $menu.find('.qpp-search').on('input', (e) => {
@@ -247,15 +294,21 @@ async function openQuickPersonaSelector() {
             buildMenuItems($menu.find('.qpp-grid'), userAvatars, term);
             focusedIndex = -1;
         });
-        // autofocus search only on keyboard opens (not mouse)
-        if (document.activeElement === document.getElementById('quickPersona')) {
+        // Autofocus search only on keyboard opens (not mouse/touch).
+        // On mobile this would pop up the soft keyboard and cover the menu.
+        if (!IS_TOUCH && document.activeElement === document.getElementById('quickPersona')) {
             setTimeout(() => $menu.find('.qpp-search').trigger('focus'), 50);
         }
     }
 
-    // Outside click handler (scoped to this open session)
+    // Outside click handler (scoped to this open session).
+    // Armed with a small delay so the initial click/tap that opened the menu
+    // does not bubble back to us in capture phase and close it immediately
+    // (this was observable on iOS Safari with rapid touch events).
+    let armed = false;
+    setTimeout(() => { armed = true; }, 80);
     outsideClickHandler = (ev) => {
-        if (!isOpen) return;
+        if (!isOpen || !armed) return;
         if (ev.target.closest('#quickPersonaMenu')) return;
         if (ev.target.closest('#quickPersona')) return;
         if (ev.target.closest('.qpp-context-menu')) return;
@@ -373,6 +426,7 @@ function onPersonaItemContextMenu(e) {
 
 function onMenuAction(e) {
     const action = $(e.currentTarget).attr('data-action');
+    if (action === 'close') { closeQuickPersonaSelector(); return; }
     closeQuickPersonaSelector();
     if (action === 'new') {
         const addBtn = document.getElementById('create_dummy_persona');
@@ -380,6 +434,37 @@ function onMenuAction(e) {
         else openPersonaManagementPanel();
     }
     if (action === 'manage') openPersonaManagementPanel();
+}
+
+/**
+ * Touch-friendly toolbar: applies a lock action to the CURRENTLY active persona.
+ * This is the mobile equivalent of shift-click / ctrl-click.
+ */
+async function onTouchToolbarAction(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const action = $(e.currentTarget).attr('data-touch-action');
+    switch (action) {
+        case 'lock-chat': await togglePersonaLock('chat'); break;
+        case 'lock-char': await togglePersonaLock('character'); break;
+        case 'default':   await togglePersonaLock('default'); break;
+    }
+    // Refresh footer chips in-place without closing the menu
+    const $menu = $('#quickPersonaMenu');
+    updateFooter($menu);
+    syncTouchToolbarState($menu);
+    // Also refresh the grid so the lock-stack icons update on the selected item
+    const userAvatars = cachedAvatars ?? (cachedAvatars = await getUserAvatars(false));
+    const search = String($menu.find('.qpp-search').val() || '').trim();
+    buildMenuItems($menu.find('.qpp-grid'), userAvatars, search);
+    refreshButton();
+}
+
+/** Sync the pressed/active state of the touch toolbar buttons with real lock state. */
+function syncTouchToolbarState($menu) {
+    $menu.find('[data-touch-action="lock-chat"]').toggleClass('qpp-active', isPersonaLocked('chat'));
+    $menu.find('[data-touch-action="lock-char"]').toggleClass('qpp-active', isPersonaLocked('character'));
+    $menu.find('[data-touch-action="default"]').toggleClass('qpp-active', user_avatar === power_user.default_persona);
 }
 
 function onMenuKeydown(ev, $menu) {
@@ -546,18 +631,38 @@ function registerSlashCommands() {
 }
 
 /* ─────────────────────────────── global hotkey ──────────────────────────────────── */
-function onGlobalHotkey(ev) {
+/**
+ * Matches the configured hotkey against a KeyboardEvent.
+ * Default: Ctrl/Cmd + Shift + P  (no conflict with browser Print `Ctrl/Cmd + P`).
+ * Uses `ev.code` as a fallback to work across keyboard layouts (e.g., Cyrillic).
+ */
+function matchesHotkey(ev) {
     const cfg = settings();
-    if (!cfg.enableHotkey || !cfg.hotkey) return;
+    if (!cfg.enableHotkey || !cfg.hotkey) return false;
+
+    const wantCtrl  = !!cfg.hotkeyCtrl;
+    const wantShift = !!cfg.hotkeyShift;
+    const wantAlt   = !!cfg.hotkeyAlt;
+
+    // On macOS allow Cmd as equivalent of Ctrl
+    const hasCtrl = ev.ctrlKey || ev.metaKey;
+    if (hasCtrl !== wantCtrl) return false;
+    if (ev.shiftKey !== wantShift) return false;
+    if (ev.altKey !== wantAlt) return false;
+
     const key = String(cfg.hotkey).toLowerCase();
-    if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && !ev.shiftKey && ev.key.toLowerCase() === key) {
-        // Avoid stealing browser actions if focus is in editable text? Only when NOT in an input.
-        const tag = (document.activeElement?.tagName || '').toLowerCase();
-        const isEditable = tag === 'input' || tag === 'textarea' || document.activeElement?.isContentEditable;
-        if (isEditable && !ev.target?.closest?.('#quickPersonaMenu')) return;
-        ev.preventDefault();
-        toggleQuickPersonaSelector();
-    }
+    const evKey = String(ev.key || '').toLowerCase();
+    const evCode = String(ev.code || '').toLowerCase(); // e.g. "keyp"
+
+    return evKey === key || evCode === 'key' + key;
+}
+
+function onGlobalHotkey(ev) {
+    if (!matchesHotkey(ev)) return;
+    // Capture phase — we want to beat ST's own shortcut router and the browser's default.
+    ev.preventDefault();
+    ev.stopPropagation();
+    toggleQuickPersonaSelector();
 }
 
 /* ─────────────────────────────── settings panel ─────────────────────────────────── */
@@ -604,9 +709,34 @@ function renderSettingsPanel() {
                     <span>${t`Decorative glyphs`} ${GLYPH}</span>
                 </label>
                 <label class="checkbox_label">
-                    <input type="checkbox" id="qpp-enableHotkey" ${cfg.enableHotkey ? 'checked' : ''}>
-                    <span>${t`Global hotkey`} (Ctrl/Cmd + <input type="text" id="qpp-hotkey" class="qpp-inline-input" maxlength="1" value="${escapeAttr(String(cfg.hotkey || ''))}">)</span>
+                    <input type="checkbox" id="qpp-touchActionRow" ${cfg.touchActionRow ? 'checked' : ''}>
+                    <span>${t`Show mobile quick-action toolbar (touch devices)`}</span>
                 </label>
+
+                <div class="qpp-hotkey-block qpp-mt">
+                    <label class="checkbox_label">
+                        <input type="checkbox" id="qpp-enableHotkey" ${cfg.enableHotkey ? 'checked' : ''}>
+                        <span><b>${t`Global hotkey`}</b></span>
+                    </label>
+                    <div class="qpp-hotkey-row">
+                        <label class="checkbox_label qpp-inline">
+                            <input type="checkbox" id="qpp-hotkeyCtrl" ${cfg.hotkeyCtrl ? 'checked' : ''}>
+                            <span>Ctrl/Cmd</span>
+                        </label>
+                        <label class="checkbox_label qpp-inline">
+                            <input type="checkbox" id="qpp-hotkeyShift" ${cfg.hotkeyShift ? 'checked' : ''}>
+                            <span>Shift</span>
+                        </label>
+                        <label class="checkbox_label qpp-inline">
+                            <input type="checkbox" id="qpp-hotkeyAlt" ${cfg.hotkeyAlt ? 'checked' : ''}>
+                            <span>Alt/Option</span>
+                        </label>
+                        <span class="qpp-muted">+</span>
+                        <input type="text" id="qpp-hotkey" class="qpp-inline-input" maxlength="1" value="${escapeAttr(String(cfg.hotkey || ''))}">
+                        <span class="qpp-muted qpp-ml qpp-hotkey-preview"></span>
+                    </div>
+                    <small class="qpp-muted">${t`Default is Ctrl/Cmd + Shift + P (avoids the browser's Print shortcut).`}</small>
+                </div>
 
                 <div class="qpp-row qpp-mt">
                     <label for="qpp-gridColumns">${t`Grid columns`}</label>
@@ -623,7 +753,7 @@ function renderSettingsPanel() {
 
                 <div class="qpp-row qpp-mt">
                     <button class="menu_button" id="qpp-reset">${t`Reset defaults`}</button>
-                    <span class="qpp-muted qpp-ml">v${__QPP_PROV__.v} · ${__QPP_PROV__.a}</span>
+                    <span class="qpp-muted qpp-ml">v${__QPP_PROV__.v} · ${__QPP_PROV__.a}${IS_TOUCH ? ' · 📱 touch' : ''}</span>
                 </div>
             </div>
         </div>
@@ -631,7 +761,7 @@ function renderSettingsPanel() {
 
     $('#extensions_settings2').append(html);
 
-    const bindCheckbox = (id, key) => $(`#${id}`).on('change', function () { cfg[key] = this.checked; saveSettingsDebounced(); refreshAll(); });
+    const bindCheckbox = (id, key, refresh = true) => $(`#${id}`).on('change', function () { cfg[key] = this.checked; saveSettingsDebounced(); if (refresh) refreshAll(); updateHotkeyPreview(); });
     bindCheckbox('qpp-enableSearch', 'enableSearch');
     bindCheckbox('qpp-enableKeyboardNav', 'enableKeyboardNav');
     bindCheckbox('qpp-enableContextMenu', 'enableContextMenu');
@@ -639,14 +769,30 @@ function renderSettingsPanel() {
     bindCheckbox('qpp-showPersonaName', 'showPersonaName');
     bindCheckbox('qpp-showDescriptionTooltip', 'showDescriptionTooltip');
     bindCheckbox('qpp-glyphInHeader', 'glyphInHeader');
-    bindCheckbox('qpp-enableHotkey', 'enableHotkey');
+    bindCheckbox('qpp-touchActionRow', 'touchActionRow');
+    // Hotkey modifiers do not require a full menu refresh
+    bindCheckbox('qpp-enableHotkey', 'enableHotkey', false);
+    bindCheckbox('qpp-hotkeyCtrl', 'hotkeyCtrl', false);
+    bindCheckbox('qpp-hotkeyShift', 'hotkeyShift', false);
+    bindCheckbox('qpp-hotkeyAlt', 'hotkeyAlt', false);
 
     $('#qpp-hotkey').on('input', function () {
         const v = String(this.value || '').trim().slice(0, 1).toLowerCase();
         cfg.hotkey = v;
         this.value = v;
         saveSettingsDebounced();
+        updateHotkeyPreview();
     });
+
+    function updateHotkeyPreview() {
+        const parts = [];
+        if (cfg.hotkeyCtrl)  parts.push(isMac() ? '⌘' : 'Ctrl');
+        if (cfg.hotkeyShift) parts.push('⇧');
+        if (cfg.hotkeyAlt)   parts.push(isMac() ? '⌥' : 'Alt');
+        if (cfg.hotkey)      parts.push(String(cfg.hotkey).toUpperCase());
+        $('.qpp-hotkey-preview').text(cfg.enableHotkey && parts.length ? '= ' + parts.join(' + ') : t`(disabled)`);
+    }
+    updateHotkeyPreview();
     $('#qpp-gridColumns').on('change', function () {
         const n = Math.max(3, Math.min(12, Number(this.value) || 5));
         cfg.gridColumns = n;
@@ -679,6 +825,9 @@ function escapeHtml(s) {
 function escapeAttr(s) {
     return escapeHtml(s).replace(/\n/g, '&#10;');
 }
+function isMac() {
+    return /mac|iphone|ipad|ipod/i.test(navigator.userAgent || navigator.platform || '');
+}
 
 /* ──────────────────────────────── event wiring ──────────────────────────────────── */
 function wireEvents() {
@@ -697,8 +846,28 @@ function wireEvents() {
         refreshButton(); // lock indicators can change between chats
     });
 
-    // Hotkey
-    document.addEventListener('keydown', onGlobalHotkey, false);
+    // Hotkey — window+capture phase so we beat ST's router AND the browser's default action
+    // (e.g. Ctrl/Cmd+P = Print). Registered on window so it works even when focus is outside document.
+    window.addEventListener('keydown', onGlobalHotkey, { capture: true });
+
+    // Long-press support for touch devices: equivalent of right-click on desktop.
+    // ST's `addLongPressEvent` handles touch lifecycle + click suppression correctly.
+    addLongPressEvent('#quickPersona', function (ev) {
+        if (!settings().enableContextMenu) return;
+        const touch = ev.touches?.[0] || ev.changedTouches?.[0];
+        const x = touch ? touch.pageX : (ev.pageX ?? window.innerWidth / 2);
+        const y = touch ? touch.pageY : (ev.pageY ?? window.innerHeight / 2);
+        showContextMenu(x, y, user_avatar);
+    });
+    addLongPressEvent('#quickPersonaMenu .qpp-grid li[data-avatar-id]', function (ev) {
+        if (!settings().enableContextMenu) return;
+        const avatarId = this.getAttribute('data-avatar-id');
+        if (!avatarId) return;
+        const touch = ev.touches?.[0] || ev.changedTouches?.[0];
+        const x = touch ? touch.pageX : (ev.pageX ?? window.innerWidth / 2);
+        const y = touch ? touch.pageY : (ev.pageY ?? window.innerHeight / 2);
+        showContextMenu(x, y, avatarId);
+    });
 }
 
 /* ──────────────────────────────── initialization ────────────────────────────────── */
