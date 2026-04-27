@@ -1,8 +1,23 @@
-body.square-avatars .quickPersonaMenuImg {
-    border-radius: 2px;
+/*
+ * ⊹ Quick Persona Pro ⊹
+ * Theme-aware styling. Works with light/dark/custom ST themes.
+ */
+
+/* ────────────────── main button ────────────────── */
+#quickPersona {
+    position: relative;
+    width: var(--bottomFormBlockSize);
+    height: var(--bottomFormBlockSize);
+    order: 10;
+    transition: transform 0.15s ease;
 }
 
-#quickPersonaImg, .quickPersonaMenuImg {
+#quickPersona:hover {
+    transform: scale(1.05);
+}
+
+#quickPersonaImg,
+.quickPersonaMenuImg {
     border-radius: 50%;
     border: 1px solid transparent;
     box-shadow: 0 0 5px var(--black50a);
@@ -12,6 +27,7 @@ body.square-avatars .quickPersonaMenuImg {
     object-fit: cover;
     object-position: center center;
     cursor: pointer;
+    transition: outline-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .quickPersonaMenuImg.default {
@@ -20,6 +36,15 @@ body.square-avatars .quickPersonaMenuImg {
 
 .quickPersonaMenuImg.selected {
     outline-color: var(--white70a);
+    box-shadow: 0 0 8px var(--white70a);
+}
+
+body.square-avatars .quickPersonaMenuImg {
+    border-radius: 2px;
+}
+
+body.big-avatars .quickPersonaMenuImg {
+    border-radius: 10px;
 }
 
 #quickPersonaCaret {
@@ -33,51 +58,349 @@ body.square-avatars .quickPersonaMenuImg {
     z-index: 10;
     font-size: calc(var(--bottomFormBlockSize) / 3);
     text-shadow: 0 0 5px var(--black50a);
+    pointer-events: none;
 }
 
-#quickPersona {
-    position: relative;
-    width: var(--bottomFormBlockSize);
-    height: var(--bottomFormBlockSize);
-    order: 10;
+/* Lock badge on main button */
+.qpp-lock-badge {
+    position: absolute;
+    left: -2px;
+    bottom: -2px;
+    width: calc(var(--bottomFormBlockSize) / 2.6);
+    height: calc(var(--bottomFormBlockSize) / 2.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--SmartThemeBlurTintColor, var(--black70a));
+    color: var(--white70a);
+    font-size: calc(var(--bottomFormBlockSize) / 4);
+    box-shadow: 0 0 4px var(--black50a);
+    pointer-events: none;
+    z-index: 11;
 }
 
+.qpp-lock-badge.qpp-has-lock { display: flex; }
+.qpp-lock-badge.qpp-lock-chat    { color: #7ec4ff; }
+.qpp-lock-badge.qpp-lock-char    { color: #ffd27e; }
+.qpp-lock-badge.qpp-lock-default { color: var(--golden); }
+
+/* ────────────────── dropdown menu ────────────────── */
 #quickPersonaMenu {
     z-index: 30000;
     backdrop-filter: blur(var(--SmartThemeBlurStrength));
-    box-shadow: none;
-    --itemsPerRow: 5;
-    --blockWidth: 50px;
+    -webkit-backdrop-filter: blur(var(--SmartThemeBlurStrength));
+    background: var(--SmartThemeBlurTintColor, var(--black70a));
+    border: 1px solid var(--SmartThemeBorderColor, var(--white30a));
+    border-radius: 10px;
+    box-shadow: 0 4px 20px var(--black50a);
+    padding: 6px 6px 4px 6px;
+    min-width: 260px;
+    max-width: min(92vw, 520px);
+    --qpp-cols: 5;
+    --qpp-cell: 50px;
 }
 
 body.big-avatars #quickPersonaMenu {
-    --blockWidth: 60px;
+    --qpp-cell: 60px;
 }
 
-#quickPersonaMenu li {
-    width: 50px;
-    height: 50px;
-    padding: 0;
+#quickPersonaMenu .qpp-menu-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 6px 6px 6px;
+    border-bottom: 1px solid var(--white20a);
+    margin-bottom: 6px;
 }
 
-body.big-avatars #quickPersonaMenu li {
-    width: 60px;
-    height: 90px;
+#quickPersonaMenu .qpp-menu-title {
+    font-weight: 600;
+    font-size: 0.95em;
+    letter-spacing: 0.02em;
+    color: var(--SmartThemeBodyColor, var(--white70a));
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-body.big-avatars .quickPersonaMenuImg {
-    border-radius: 10px;
+#quickPersonaMenu .qpp-menu-actions {
+    display: flex;
+    gap: 6px;
 }
 
-#quickPersonaMenu ul {
+#quickPersonaMenu .qpp-icon-btn {
+    width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--SmartThemeBodyColor, var(--white70a));
+    opacity: 0.75;
+    transition: opacity 0.1s ease, background 0.1s ease;
+}
+
+#quickPersonaMenu .qpp-icon-btn:hover,
+#quickPersonaMenu .qpp-icon-btn:focus-visible {
+    opacity: 1;
+    background: var(--white20a);
+    outline: none;
+}
+
+/* Search */
+#quickPersonaMenu .qpp-search-wrap {
+    position: relative;
+    margin: 0 2px 6px 2px;
+}
+
+#quickPersonaMenu .qpp-search-icon {
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.5;
+    pointer-events: none;
+    font-size: 0.8em;
+}
+
+#quickPersonaMenu .qpp-search {
+    width: 100%;
+    padding: 5px 8px 5px 26px;
+    font-size: 0.9em;
+    border-radius: 6px;
+}
+
+/* Grid list */
+#quickPersonaMenu ul.qpp-grid {
+    list-style: none;
     margin: 0;
-    flex-direction: row;
-    flex-wrap: wrap;
-    max-width: calc(var(--itemsPerRow) * var(--blockWidth) + 35px);
-    justify-content: space-around;
-    padding: 5px;
-    gap: 5px;
-    max-height: 75vh;
-    max-height: 75svh;
+    padding: 4px;
+    display: grid;
+    grid-template-columns: repeat(var(--qpp-cols), var(--qpp-cell));
+    gap: 6px;
+    justify-content: center;
+    max-height: 60vh;
+    max-height: 60svh;
     overflow-y: auto;
+    overflow-x: hidden;
+}
+
+#quickPersonaMenu ul.qpp-grid li {
+    position: relative;
+    width: var(--qpp-cell);
+    height: var(--qpp-cell);
+    padding: 0;
+    margin: 0;
+    border-radius: 8px;
+    transition: transform 0.1s ease;
+}
+
+/* Give room for the name label under avatar when enabled */
+#quickPersonaMenu ul.qpp-grid li:has(.qpp-item-name) {
+    height: calc(var(--qpp-cell) + 16px);
+}
+
+#quickPersonaMenu ul.qpp-grid li:hover,
+#quickPersonaMenu ul.qpp-grid li:focus-visible {
+    transform: scale(1.06);
+    outline: none;
+}
+
+#quickPersonaMenu ul.qpp-grid li:focus-visible .quickPersonaMenuImg {
+    outline-color: var(--SmartThemeQuoteColor, #b48cff);
+}
+
+#quickPersonaMenu ul.qpp-grid li img.quickPersonaMenuImg {
+    width: var(--qpp-cell);
+    height: var(--qpp-cell);
+}
+
+#quickPersonaMenu ul.qpp-grid li .qpp-item-name {
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 0.7em;
+    line-height: 1;
+    padding: 2px 2px;
+    color: var(--SmartThemeBodyColor, var(--white70a));
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.85;
+    pointer-events: none;
+}
+
+.qpp-empty {
+    text-align: center;
+    opacity: 0.6;
+    padding: 16px 8px;
+    grid-column: 1 / -1;
+    font-style: italic;
+}
+
+/* Lock stack overlay on avatars */
+.qpp-lock-stack {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    display: flex;
+    gap: 2px;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.qpp-lk {
+    background: var(--black70a);
+    color: var(--white70a);
+    border-radius: 50%;
+    width: 14px;
+    height: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    box-shadow: 0 0 3px var(--black50a);
+}
+
+.qpp-lk-default { color: var(--golden); }
+.qpp-lk-chat    { color: #7ec4ff; }
+.qpp-lk-char    { color: #ffd27e; }
+
+/* Footer */
+.qpp-menu-footer {
+    margin-top: 6px;
+    padding: 4px 6px 2px 6px;
+    border-top: 1px solid var(--white20a);
+    font-size: 0.8em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--SmartThemeBodyColor, var(--white70a));
+    opacity: 0.85;
+    flex-wrap: wrap;
+}
+
+.qpp-menu-footer .qpp-title {
+    opacity: 0.6;
+    margin-left: 4px;
+    font-style: italic;
+}
+
+.qpp-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: var(--white10a);
+    font-size: 0.9em;
+}
+
+.qpp-chip-default { color: var(--golden); }
+.qpp-chip-chat    { color: #7ec4ff; }
+.qpp-chip-char    { color: #ffd27e; }
+
+/* ────────────────── context menu ────────────────── */
+.qpp-context-menu {
+    position: fixed;
+    z-index: 30100;
+    min-width: 200px;
+    background: var(--SmartThemeBlurTintColor, var(--black70a));
+    backdrop-filter: blur(var(--SmartThemeBlurStrength));
+    -webkit-backdrop-filter: blur(var(--SmartThemeBlurStrength));
+    border: 1px solid var(--SmartThemeBorderColor, var(--white30a));
+    border-radius: 8px;
+    box-shadow: 0 6px 24px var(--black50a);
+    padding: 4px;
+    user-select: none;
+}
+
+.qpp-cm-header {
+    padding: 6px 10px 4px 10px;
+    font-weight: 600;
+    font-size: 0.85em;
+    color: var(--SmartThemeBodyColor, var(--white70a));
+    opacity: 0.7;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-bottom: 1px solid var(--white20a);
+    margin-bottom: 4px;
+}
+
+.qpp-cm-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+    color: var(--SmartThemeBodyColor, var(--white70a));
+    transition: background 0.1s ease;
+}
+
+.qpp-cm-item:hover,
+.qpp-cm-item:focus-visible {
+    background: var(--white20a);
+    outline: none;
+}
+
+.qpp-cm-item i {
+    width: 14px;
+    text-align: center;
+    opacity: 0.75;
+}
+
+.qpp-cm-sep {
+    height: 1px;
+    margin: 4px 8px;
+    background: var(--white20a);
+}
+
+/* ────────────────── settings panel ────────────────── */
+#qpp-settings-panel {
+    margin-top: 10px;
+}
+
+#qpp-settings-panel .qpp-muted {
+    opacity: 0.6;
+    font-size: 0.85em;
+}
+
+#qpp-settings-panel .qpp-mt { margin-top: 10px; }
+#qpp-settings-panel .qpp-ml { margin-left: 10px; }
+
+#qpp-settings-panel .qpp-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+#qpp-settings-panel .qpp-row label {
+    min-width: 140px;
+    font-size: 0.9em;
+}
+
+#qpp-settings-panel .qpp-num {
+    width: 80px;
+}
+
+#qpp-settings-panel .qpp-inline-input {
+    width: 28px;
+    text-align: center;
+    padding: 2px 4px;
+    margin: 0 2px;
+    background: var(--black30a);
+    color: var(--SmartThemeBodyColor, var(--white70a));
+    border: 1px solid var(--white30a);
+    border-radius: 4px;
+    font-family: monospace;
+    text-transform: lowercase;
 }

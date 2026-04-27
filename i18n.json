@@ -1,0 +1,36 @@
+{
+    "ru-ru": {
+        "Quick Persona": "Быстрая персона",
+        "Search personas…": "Поиск персон…",
+        "Search personas": "Поиск персон",
+        "No personas match.": "Нет совпадений.",
+        "Create new persona": "Создать новую персону",
+        "Open Persona Management": "Открыть управление персонами",
+        "Select persona": "Выбрать персону",
+        "Lock to chat": "Закрепить за чатом",
+        "Unlock from chat": "Открепить от чата",
+        "Lock to character": "Закрепить за персонажем",
+        "Unlock from character": "Открепить от персонажа",
+        "Set as default": "Сделать основной",
+        "Remove default": "Убрать как основную",
+        "Locked to": "Закреплена за",
+        "chat": "чат",
+        "character": "персонаж",
+        "default": "основная",
+        "Persona not found: ${0}": "Персона не найдена: ${0}",
+
+        "Supercharged persona switcher. Based on Quick Persona by Cohee1207.": "Улучшенный переключатель персон. Основан на Quick Persona от Cohee1207.",
+        "Enable search bar": "Включить строку поиска",
+        "Enable keyboard navigation (arrows / Enter / Esc)": "Включить навигацию с клавиатуры (стрелки / Enter / Esc)",
+        "Enable right-click context menu": "Включить контекстное меню (ПКМ)",
+        "Show lock indicators (chat / character / default)": "Показывать индикаторы закрепления (чат / персонаж / основная)",
+        "Show persona name under each avatar": "Показывать имя под аватаркой",
+        "Show description preview in tooltip": "Показывать описание во всплывающей подсказке",
+        "Decorative glyphs": "Декоративные глифы",
+        "Global hotkey": "Глобальная горячая клавиша",
+        "Grid columns": "Колонок в сетке",
+        "Menu placement": "Положение меню",
+        "Reset defaults": "Сбросить настройки",
+        "Reset ${0} to default settings?": "Сбросить настройки ${0}?"
+    }
+}
