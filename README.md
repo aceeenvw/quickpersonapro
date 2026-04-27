@@ -4,7 +4,7 @@
 
 ### _Supercharged persona switcher for SillyTavern_
 
-[![Version](https://img.shields.io/badge/version-1.0.3-b48cff?style=flat-square)](./manifest.json)
+[![Version](https://img.shields.io/badge/version-1.0.4-b48cff?style=flat-square)](./manifest.json)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-7ec4ff?style=flat-square)](./LICENSE)
 [![SillyTavern](https://img.shields.io/badge/SillyTavern-1.12%2B-ffd27e?style=flat-square)](https://github.com/SillyTavern/SillyTavern)
 [![i18n](https://img.shields.io/badge/i18n-EN%20%2F%20RU-golden?style=flat-square)](./i18n.json)
@@ -77,8 +77,18 @@ But **⊹ QUICK PERSONA PRO ⊹** adds **search, keyboard navigation, lock indic
 
 **⊹ QUICK PERSONA PRO ⊹** is fully touch-optimized:
 
-- **Long-press** any persona (or the main button) = equivalent of right-click → full context menu
-- **Quick-action toolbar** — on touch devices a visible row appears at the top of the menu with **Chat / Character / Default** lock toggles for the currently-active persona. This is the mobile equivalent of Shift+Click / Ctrl+Click.
+- **Reliable long-press** = right-click equivalent, built on **Pointer Events** with:
+  - **10px movement tolerance** — finger jitter no longer cancels the hold (the stock SillyTavern helper canceled on ANY movement, which is why long-press often failed on real devices)
+  - **Visual feedback** — the pressed persona scales up and gets a glowing ring as you hold, so you know the press is registering
+  - **Haptic buzz** on successful trigger (Android; silently skipped on iOS)
+  - **400ms hold duration** — snappier than the original 500ms
+  - **Native-gesture suppression** — `touch-action: manipulation`, `-webkit-touch-callout: none`, and a scoped `contextmenu` preventer keep Android Chrome's image menu and iOS Safari's text-select popup from stealing the gesture
+  - **Click suppression window** — the release tap after a long-press doesn't accidentally fire a "select persona" click
+- **Every context-menu action also has a non-long-press route** — so the extension is fully usable even if long-press misbehaves on a particular device:
+  - Select → tap the avatar
+  - Lock chat / character / Set default → mobile **quick-action toolbar** at the top of the menu
+  - Open Persona Management → ⚙ icon in menu header
+- **Quick-action toolbar** — on touch devices a visible row appears at the top of the menu with **Chat / Character / Default** toggles for the currently-active persona. Mobile equivalent of Shift+Click / Ctrl+Click.
 - **Bigger tap targets** — cells grow to 56×56, icon buttons to 36×36, context menu items to 44px tall (Apple/Google HIG recommended minimum)
 - **Search field uses 16px font** on mobile — prevents iOS Safari from auto-zooming when focused
 - **Auto-shrinking grid** — columns automatically reduce on narrow phones so the menu fits on-screen

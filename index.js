@@ -24,7 +24,6 @@ import {
 import { extension_settings } from '../../../extensions.js';
 import { Popper, Fuse } from '../../../../lib.js';
 import { t, addLocaleData, getCurrentLocale } from '../../../i18n.js';
-import { addLongPressEvent } from '../../../utils.js';
 import { SlashCommand } from '../../../slash-commands/SlashCommand.js';
 import { SlashCommandParser } from '../../../slash-commands/SlashCommandParser.js';
 import { SlashCommandArgument, SlashCommandNamedArgument, ARGUMENT_TYPE } from '../../../slash-commands/SlashCommandArgument.js';
@@ -38,7 +37,7 @@ import { SlashCommandArgument, SlashCommandNamedArgument, ARGUMENT_TYPE } from '
 const __QPP_PROV__ = (() => {
     const seed = [0x61, 0x63, 0x65, 0x65, 0x6e, 0x76, 0x77];
     const a = String.fromCharCode.apply(null, seed);
-    const v = '1.0.3';
+    const v = '1.0.4';
     // Lightweight FNV-1a over (a + v) for integrity
     let h = 0x811c9dc5;
     for (const c of (a + '@' + v)) { h ^= c.charCodeAt(0); h = (h * 0x01000193) >>> 0; }
@@ -81,6 +80,137 @@ const IS_TOUCH = (() => {
             || (navigator.maxTouchPoints > 0);
     } catch { return false; }
 })();
+
+/* ──────────────────────────────── long-press helper ─────────────────────────────── */
+/**
+ * Reliable long-press handler using Pointer Events (falls back to Touch Events
+ * on browsers without pointer-event support — rare, but possible).
+ *
+ * Improvements over SillyTavern's `addLongPressEvent`:
+ *   - Pointer Events: one code path for mouse / touch / pen.
+ *   - Movement tolerance: small finger jitter (≤ 10px) doesn't cancel the timer
+ *     (the stock helper cancels on ANY touchmove, which is why it often fails).
+ *   - Visual progress feedback: the target gets `.qpp-pressing` for CSS to hook.
+ *   - Haptic confirmation: `navigator.vibrate(15)` on successful trigger (Android).
+ *   - 400ms default duration (feels snappier than 500ms).
+ *   - Click suppression window after trigger so the release doesn't also fire a click.
+ *   - Cleans up state on scroll / pointer loss / selection / window blur.
+ *   - Event delegation: single set of listeners per call, matches dynamic elements.
+ *
+ * @param {string} selector       CSS selector for target elements
+ * @param {(this: Element, ev: PointerEvent|TouchEvent) => void} callback
+ * @param {object} [opts]
+ * @param {number} [opts.delay=400]       ms hold duration to trigger
+ * @param {number} [opts.tolerance=10]    px movement threshold before cancel
+ */
+function qppLongPress(selector, callback, { delay = 400, tolerance = 10 } = {}) {
+    const supportsPointer = 'PointerEvent' in window;
+
+    /** @type {number|null} */ let timer = null;
+    /** @type {Element|null} */ let target = null;
+    let startX = 0, startY = 0;
+    let fired = false;
+    let suppressClickUntil = 0;
+
+    const clearVisual = () => {
+        if (target) target.classList.remove('qpp-pressing');
+    };
+    const reset = () => {
+        if (timer !== null) { clearTimeout(timer); timer = null; }
+        clearVisual();
+        target = null;
+    };
+
+    const onStart = (ev) => {
+        // Only primary button / primary touch
+        if (ev.button != null && ev.button !== 0) return;
+        if (ev.isPrimary === false) return;
+        const el = ev.target?.closest?.(selector);
+        if (!el) return;
+
+        reset();
+        target = el;
+        fired = false;
+        const pt = getPoint(ev);
+        startX = pt.x; startY = pt.y;
+
+        // Start visual feedback immediately so the user sees the press register.
+        target.classList.add('qpp-pressing');
+
+        timer = setTimeout(() => {
+            if (!target) return;
+            fired = true;
+            // Haptic buzz (Android; silently ignored where unsupported)
+            try { navigator.vibrate?.(15); } catch { /* noop */ }
+            // Open the context menu / whatever the caller wants
+            try { callback.call(target, ev); } catch (e) { console.error('[QPP] long-press callback error', e); }
+            // Suppress the trailing synthetic `click` that follows pointerup on touch
+            suppressClickUntil = Date.now() + 600;
+            reset();
+        }, delay);
+    };
+
+    const onMove = (ev) => {
+        if (!target || timer === null) return;
+        const pt = getPoint(ev);
+        if (Math.hypot(pt.x - startX, pt.y - startY) > tolerance) {
+            reset();
+        }
+    };
+
+    const onEnd = () => {
+        // Released before the timer elapsed — just clean up silently.
+        if (fired) {
+            fired = false;
+            // keep suppressClickUntil alive for the click-eater below
+        }
+        reset();
+    };
+
+    const onClickEater = (ev) => {
+        if (Date.now() < suppressClickUntil) {
+            ev.preventDefault();
+            ev.stopImmediatePropagation();
+        }
+    };
+
+    if (supportsPointer) {
+        document.addEventListener('pointerdown', onStart, { passive: true });
+        document.addEventListener('pointermove', onMove, { passive: true });
+        document.addEventListener('pointerup', onEnd, { passive: true });
+        document.addEventListener('pointercancel', onEnd, { passive: true });
+    } else {
+        // Fallback for ancient browsers — wraps Touch Events.
+        document.addEventListener('touchstart', onStart, { passive: true });
+        document.addEventListener('touchmove', onMove, { passive: true });
+        document.addEventListener('touchend', onEnd, { passive: true });
+        document.addEventListener('touchcancel', onEnd, { passive: true });
+    }
+    // Safeguards against lost pointer capture (scrolling containers, window blur, etc.)
+    window.addEventListener('blur', onEnd);
+    document.addEventListener('scroll', onEnd, { capture: true, passive: true });
+    // Eat the trailing click that would otherwise cause an unintended "select persona"
+    document.addEventListener('click', onClickEater, { capture: true });
+
+    // Suppress the native browser context menu on touch devices within our
+    // selector, so Android/iOS don't pop up the image-save / text-select menu
+    // that competes with ours. Desktop right-click (which is our actual
+    // contextmenu trigger on mouse) still works because the element's OWN
+    // handler (bound via jQuery elsewhere) preventDefaults — we only stop
+    // the DEFAULT here, not propagation, on coarse-pointer devices.
+    if (IS_TOUCH) {
+        document.addEventListener('contextmenu', (ev) => {
+            const el = ev.target?.closest?.(selector);
+            if (el) ev.preventDefault();
+        }, { capture: true });
+    }
+
+    function getPoint(ev) {
+        if ('clientX' in ev) return { x: ev.clientX, y: ev.clientY };
+        const t = ev.touches?.[0] || ev.changedTouches?.[0];
+        return t ? { x: t.clientX, y: t.clientY } : { x: 0, y: 0 };
+    }
+}
 
 function settings() {
     if (!extension_settings[MODULE] || typeof extension_settings[MODULE] !== 'object') {
@@ -974,24 +1104,31 @@ function wireEvents() {
     // (e.g. Ctrl/Cmd+P = Print). Registered on window so it works even when focus is outside document.
     window.addEventListener('keydown', onGlobalHotkey, { capture: true });
 
-    // Long-press support for touch devices: equivalent of right-click on desktop.
-    // ST's `addLongPressEvent` handles touch lifecycle + click suppression correctly.
-    addLongPressEvent('#quickPersona', function (ev) {
+    // Long-press = right-click equivalent on touch devices.
+    // Uses our custom qppLongPress (see helper) which is more tolerant, has
+    // visual feedback, and suppresses native gesture menus properly.
+    qppLongPress('#quickPersona', function (ev) {
         if (!settings().enableContextMenu) return;
-        const touch = ev.touches?.[0] || ev.changedTouches?.[0];
-        const x = touch ? touch.pageX : (ev.pageX ?? window.innerWidth / 2);
-        const y = touch ? touch.pageY : (ev.pageY ?? window.innerHeight / 2);
-        showContextMenu(x, y, user_avatar);
+        const pt = pointerPageXY(ev);
+        showContextMenu(pt.x, pt.y, user_avatar);
     });
-    addLongPressEvent('#quickPersonaMenu .qpp-grid li.qpp-item', function (ev) {
+    qppLongPress('#quickPersonaMenu .qpp-grid li.qpp-item', function (ev) {
         if (!settings().enableContextMenu) return;
         const avatarId = getItemAvatarId(this);
         if (!avatarId) return;
-        const touch = ev.touches?.[0] || ev.changedTouches?.[0];
-        const x = touch ? touch.pageX : (ev.pageX ?? window.innerWidth / 2);
-        const y = touch ? touch.pageY : (ev.pageY ?? window.innerHeight / 2);
-        showContextMenu(x, y, avatarId);
+        const pt = pointerPageXY(ev);
+        showContextMenu(pt.x, pt.y, avatarId);
     });
+}
+
+/** Extract page-based (x,y) from a PointerEvent or TouchEvent, with a sensible fallback. */
+function pointerPageXY(ev) {
+    if (ev && ('pageX' in ev) && typeof ev.pageX === 'number') {
+        return { x: ev.pageX, y: ev.pageY };
+    }
+    const t = ev?.touches?.[0] || ev?.changedTouches?.[0];
+    if (t) return { x: t.pageX, y: t.pageY };
+    return { x: Math.round(window.innerWidth / 2), y: Math.round(window.innerHeight / 2) };
 }
 
 /* ──────────────────────────────── initialization ────────────────────────────────── */
