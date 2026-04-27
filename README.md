@@ -4,7 +4,7 @@
 
 ### _Supercharged persona switcher for SillyTavern_
 
-[![Version](https://img.shields.io/badge/version-1.0.2-b48cff?style=flat-square)](./manifest.json)
+[![Version](https://img.shields.io/badge/version-1.0.3-b48cff?style=flat-square)](./manifest.json)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-7ec4ff?style=flat-square)](./LICENSE)
 [![SillyTavern](https://img.shields.io/badge/SillyTavern-1.12%2B-ffd27e?style=flat-square)](https://github.com/SillyTavern/SillyTavern)
 [![i18n](https://img.shields.io/badge/i18n-EN%20%2F%20RU-golden?style=flat-square)](./i18n.json)

@@ -38,7 +38,7 @@ import { SlashCommandArgument, SlashCommandNamedArgument, ARGUMENT_TYPE } from '
 const __QPP_PROV__ = (() => {
     const seed = [0x61, 0x63, 0x65, 0x65, 0x6e, 0x76, 0x77];
     const a = String.fromCharCode.apply(null, seed);
-    const v = '1.0.2';
+    const v = '1.0.3';
     // Lightweight FNV-1a over (a + v) for integrity
     let h = 0x811c9dc5;
     for (const c of (a + '@' + v)) { h ^= c.charCodeAt(0); h = (h * 0x01000193) >>> 0; }
@@ -427,9 +427,13 @@ function buildMenuItems($list, avatars, search) {
         const chatLocked = cfg.enableLockIndicators && isSelected && isPersonaLocked('chat');
         const charLocked = cfg.enableLockIndicators && isSelected && isPersonaLocked('character');
 
+        // Build the <li> WITHOUT the avatarId in an HTML attribute: persona
+        // filenames commonly contain dots and other characters that previously
+        // got mangled by CSS.escape-style attribute escaping, breaking clicks.
+        // Store the raw ID on the DOM node via jQuery .data() instead.
         const $li = $(`
-            <li tabindex="0" class="list-group-item interactable" role="menuitem"
-                data-avatar-id="${CSS.escape(avatarId)}" title="${escapeAttr(tooltip)}">
+            <li tabindex="0" class="list-group-item interactable qpp-item" role="menuitem"
+                title="${escapeAttr(tooltip)}">
                 <img class="quickPersonaMenuImg" alt="" />
                 <div class="qpp-lock-stack" aria-hidden="true">
                     ${isDefault ? '<i class="qpp-lk qpp-lk-default fa-solid fa-star" title="default"></i>' : ''}
@@ -438,6 +442,11 @@ function buildMenuItems($list, avatars, search) {
                 </div>
                 ${cfg.showPersonaName ? `<div class="qpp-item-name">${escapeHtml(name)}</div>` : ''}
             </li>`);
+
+        // Attach the raw, unescaped avatar id in jQuery's internal data store —
+        // retrieved later via $(el).data('avatarId'). Never goes through HTML
+        // attribute (de)serialization so arbitrary filenames round-trip safely.
+        $li.data('avatarId', avatarId);
 
         $li.find('img')
             .on('error', onAvatarImgError)
@@ -450,9 +459,29 @@ function buildMenuItems($list, avatars, search) {
 }
 
 /* ───────────────────────────── interaction handlers ─────────────────────────────── */
+
+/**
+ * Resolve the raw avatarId stored on the <li>. Uses jQuery .data() which reads
+ * from an internal cache untouched by HTML attribute serialization — this is
+ * deliberate because persona filenames commonly contain dots and would have
+ * been mangled by CSS.escape-style attribute escaping.
+ * @param {Element} el
+ * @returns {string|undefined}
+ */
+function getItemAvatarId(el) {
+    if (!el) return undefined;
+    const v = $(el).data('avatarId');
+    return typeof v === 'string' ? v : undefined;
+}
+
 async function onPersonaItemClick(e) {
-    const avatarId = $(e.currentTarget).attr('data-avatar-id');
-    if (!avatarId) return;
+    const avatarId = getItemAvatarId(e.currentTarget);
+    if (!avatarId) {
+        console.warn('[QPP] click on menu item without a resolvable avatarId — ignoring', e.currentTarget);
+        return;
+    }
+    // Close AFTER reading the id. (Reading before close is already safe since
+    // currentTarget is resolved at dispatch time, but keep the sequence tight.)
     closeQuickPersonaSelector();
     if (e.shiftKey) {
         // Shift+click: select and lock to chat
@@ -473,7 +502,7 @@ function onPersonaItemContextMenu(e) {
     if (!settings().enableContextMenu) return;
     e.preventDefault();
     e.stopPropagation();
-    const avatarId = $(e.currentTarget).attr('data-avatar-id');
+    const avatarId = getItemAvatarId(e.currentTarget);
     if (avatarId) showContextMenu(e.pageX, e.pageY, avatarId);
 }
 
@@ -522,7 +551,7 @@ function syncTouchToolbarState($menu) {
 
 function onMenuKeydown(ev, $menu) {
     if (!isOpen) return;
-    const items = $menu.find('.qpp-grid li[data-avatar-id]').get();
+    const items = $menu.find('.qpp-grid li.qpp-item').get();
     if (ev.key === 'Escape') {
         ev.preventDefault();
         closeQuickPersonaSelector();
@@ -954,9 +983,9 @@ function wireEvents() {
         const y = touch ? touch.pageY : (ev.pageY ?? window.innerHeight / 2);
         showContextMenu(x, y, user_avatar);
     });
-    addLongPressEvent('#quickPersonaMenu .qpp-grid li[data-avatar-id]', function (ev) {
+    addLongPressEvent('#quickPersonaMenu .qpp-grid li.qpp-item', function (ev) {
         if (!settings().enableContextMenu) return;
-        const avatarId = this.getAttribute('data-avatar-id');
+        const avatarId = getItemAvatarId(this);
         if (!avatarId) return;
         const touch = ev.touches?.[0] || ev.changedTouches?.[0];
         const x = touch ? touch.pageX : (ev.pageX ?? window.innerWidth / 2);
