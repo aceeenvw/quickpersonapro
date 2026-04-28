@@ -758,10 +758,12 @@ function showContextMenu(x, y, avatarId) {
 
 function updateFooter($menu) {
     const { name, title } = personaMeta(user_avatar);
+    // Translated strings are escaped as defence-in-depth against a future
+    // malicious locale contribution — they have no reason to contain HTML.
     const locks = [];
-    if (isPersonaLocked('chat')) locks.push(`<span class="qpp-chip qpp-chip-chat"><i class="fa-solid fa-comment"></i> ${t`chat`}</span>`);
-    if (isPersonaLocked('character')) locks.push(`<span class="qpp-chip qpp-chip-char"><i class="fa-solid fa-user-lock"></i> ${t`character`}</span>`);
-    if (user_avatar === power_user.default_persona) locks.push(`<span class="qpp-chip qpp-chip-default"><i class="fa-solid fa-star"></i> ${t`default`}</span>`);
+    if (isPersonaLocked('chat')) locks.push(`<span class="qpp-chip qpp-chip-chat"><i class="fa-solid fa-comment"></i> ${escapeHtml(t`chat`)}</span>`);
+    if (isPersonaLocked('character')) locks.push(`<span class="qpp-chip qpp-chip-char"><i class="fa-solid fa-user-lock"></i> ${escapeHtml(t`character`)}</span>`);
+    if (user_avatar === power_user.default_persona) locks.push(`<span class="qpp-chip qpp-chip-default"><i class="fa-solid fa-star"></i> ${escapeHtml(t`default`)}</span>`);
     const label = title ? `${escapeHtml(name)} <span class="qpp-title">${escapeHtml(title)}</span>` : escapeHtml(name);
     $menu.find('.qpp-current-name').html(`<i class="fa-solid fa-user"></i> ${label} ${locks.join('')}`);
 }
@@ -798,7 +800,10 @@ function registerSlashCommands() {
                 const match = Object.entries(power_user.personas || {})
                     .find(([, n]) => String(n).toLowerCase() === nameArg.toLowerCase());
                 if (!match) {
-                    toastr.warning(t`Persona not found: ${nameArg}`, BRAND);
+                    // Escape nameArg — slash commands are invocable from
+                    // attacker-controlled STscript in cards/lorebooks/QRs.
+                    // Toastr may be configured with escapeHtml:false globally.
+                    toastr.warning(escapeHtml(t`Persona not found: ${nameArg}`), BRAND, { escapeHtml: true });
                     return '';
                 }
                 await setUserAvatar(match[0]);
