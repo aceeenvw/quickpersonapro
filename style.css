@@ -390,10 +390,6 @@ body.big-avatars #quickPersonaMenu {
 }
 
 /* ─── settings panel ──────────────────────────────────────────────────── */
-#qpp-settings-panel {
-    margin-top: 10px;
-}
-
 #qpp-settings-panel .qpp-muted {
     opacity: 0.6;
     font-size: 0.85em;
