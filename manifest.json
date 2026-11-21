@@ -5,11 +5,12 @@
     "optional": [],
     "js": "index.js",
     "css": "style.css",
+    "i18n": { "ru-ru": "i18n.json" },
     "author": "aceenvw",
-    "version": "1.0.6",
+    "version": "1.1.0",
     "homePage": "https://github.com/aceeenvw/quickpersonapro",
     "auto_update": true,
-    "minimum_version": "1.12.0",
-    "description": "⊹ QUICK PERSONA PRO ⊹ — Supercharged persona switcher with search, keyboard nav, lock indicators, context menu, hotkey and slash commands. Based on Quick Persona by Cohee1207.",
+    "minimum_client_version": "1.18.0",
+    "description": "Switch personas and set chat, character, group, or default locks from the send bar.",
     "type": "quick-persona-pro"
 }
